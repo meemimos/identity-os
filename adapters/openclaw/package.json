@@ -1,0 +1,25 @@
+{
+  "name": "@identity-os/openclaw-adapter",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "identityos": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@identity-os/core": "workspace:*",
+    "@identity-os/storage": "workspace:*",
+    "@identity-os/skills": "workspace:*",
+    "@identity-os/runtime": "workspace:*",
+    "commander": "^13.0"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^11.0.0",
+    "@types/better-sqlite3": "^7.6.0",
+    "typescript": "^5.7"
+  }
+}

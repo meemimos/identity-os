@@ -6,3 +6,4 @@ dist
 *.sqlite
 *.db
 .openclaw
+.DS_Store

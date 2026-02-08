@@ -1,4 +1,5 @@
 import { useEffect, useRef, useLayoutEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { 
@@ -20,6 +21,8 @@ gsap.registerPlugin(ScrollTrigger);
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const section2Ref = useRef<HTMLDivElement>(null);
@@ -28,6 +31,7 @@ function App() {
   const section5Ref = useRef<HTMLDivElement>(null);
   const section6Ref = useRef<HTMLDivElement>(null);
   const section7Ref = useRef<HTMLDivElement>(null);
+  const scrollTriggerRefs = useRef<Map<HTMLDivElement, ScrollTrigger>>(new Map());
 
   // Hero load animation
   useEffect(() => {
@@ -72,7 +76,7 @@ function App() {
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
       // Hero scroll exit animation with parallax background
-      ScrollTrigger.create({
+      const heroST = ScrollTrigger.create({
         trigger: heroRef.current,
         start: 'top top',
         end: '+=130%',
@@ -84,6 +88,7 @@ function App() {
           });
         }
       });
+      if (heroRef.current) scrollTriggerRefs.current.set(heroRef.current, heroST);
 
       const heroTl = gsap.timeline({
         scrollTrigger: {
@@ -122,13 +127,14 @@ function App() {
         );
 
       // Section 2: Not a Chatbot with background
-      ScrollTrigger.create({
+      const section2ST = ScrollTrigger.create({
         trigger: section2Ref.current,
         start: 'top top',
         end: '+=130%',
         pin: true,
         scrub: 0.6,
       });
+      if (section2Ref.current) scrollTriggerRefs.current.set(section2Ref.current, section2ST);
 
       const section2Tl = gsap.timeline({
         scrollTrigger: {
@@ -169,13 +175,14 @@ function App() {
         );
 
       // Section 3: Not a Scheduler with background
-      ScrollTrigger.create({
+      const section3ST = ScrollTrigger.create({
         trigger: section3Ref.current,
         start: 'top top',
         end: '+=130%',
         pin: true,
         scrub: 0.6,
       });
+      if (section3Ref.current) scrollTriggerRefs.current.set(section3Ref.current, section3ST);
 
       const section3Tl = gsap.timeline({
         scrollTrigger: {
@@ -216,13 +223,14 @@ function App() {
         );
 
       // Section 4: An Engine with background
-      ScrollTrigger.create({
+      const section4ST = ScrollTrigger.create({
         trigger: section4Ref.current,
         start: 'top top',
         end: '+=130%',
         pin: true,
         scrub: 0.6,
       });
+      if (section4Ref.current) scrollTriggerRefs.current.set(section4Ref.current, section4ST);
 
       const section4Tl = gsap.timeline({
         scrollTrigger: {
@@ -263,13 +271,14 @@ function App() {
         );
 
       // Section 5: Capabilities with background
-      ScrollTrigger.create({
+      const section5ST = ScrollTrigger.create({
         trigger: section5Ref.current,
         start: 'top top',
         end: '+=150%',
         pin: true,
         scrub: 0.6,
       });
+      if (section5Ref.current) scrollTriggerRefs.current.set(section5Ref.current, section5ST);
 
       const section5Tl = gsap.timeline({
         scrollTrigger: {
@@ -431,17 +440,25 @@ function App() {
     setMenuOpen(false);
     if (ref.current) {
       // Get the ScrollTrigger instance for this section if it exists
-      const st = ScrollTrigger.getAll().find(trigger => trigger.vars.trigger === ref.current);
+      const st = scrollTriggerRefs.current.get(ref.current);
       
-      if (st) {
+      if (st && st.vars.pin) {
         // For pinned sections, scroll to the start of the pinned range
+        // Refresh ScrollTrigger to ensure accurate positions
+        ScrollTrigger.refresh();
         window.scrollTo({
           top: st.start,
           behavior: 'smooth'
         });
       } else {
-        // For flowing sections, use native scroll
-        ref.current.scrollIntoView({ behavior: 'smooth' });
+        // For flowing sections, calculate position and scroll
+        const rect = ref.current.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const targetY = rect.top + scrollTop;
+        window.scrollTo({
+          top: targetY,
+          behavior: 'smooth'
+        });
       }
     }
   }, []);
@@ -464,7 +481,12 @@ function App() {
           Identity.OS
         </span>
         <button 
-          onClick={() => setMenuOpen(true)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Menu button clicked, opening menu');
+            setMenuOpen(true);
+          }}
           className="font-mono text-xs tracking-[0.12em] uppercase text-primary hover:text-accent transition-colors cursor-pointer"
           type="button"
         >
@@ -472,49 +494,87 @@ function App() {
         </button>
       </header>
 
-      {/* Menu overlay */}
-      {menuOpen && (
+      {/* Menu overlay - rendered via portal to avoid DOM conflicts with GSAP */}
+      {menuOpen && createPortal(
         <div 
-          className="fixed inset-0 z-[100] bg-primary/95 backdrop-blur-sm flex items-center justify-center"
+          className="menu-overlay fixed inset-0 z-[10000] flex items-center justify-center"
+          style={{ 
+            backgroundColor: 'rgba(5, 6, 11, 0.98)',
+            backdropFilter: 'blur(8px)',
+            minHeight: '100vh',
+            minWidth: '100vw'
+          }}
           onClick={() => setMenuOpen(false)}
         >
           <button 
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               setMenuOpen(false);
             }}
-            className="absolute top-5 right-6 md:right-10 p-2 text-primary hover:text-accent transition-colors cursor-pointer"
+            className="absolute top-5 right-6 md:right-10 p-2 z-10 cursor-pointer"
+            style={{ color: '#F4F6FF' }}
             type="button"
+            aria-label="Close menu"
           >
             <X size={24} />
           </button>
           <nav 
-            className="flex flex-col items-center gap-8"
+            className="flex flex-col items-center gap-8 relative z-10"
             onClick={(e) => e.stopPropagation()}
+            style={{ 
+              color: '#F4F6FF',
+              minWidth: '200px'
+            }}
           >
             <button 
               onClick={(e) => handleMenuClick(e, heroRef)}
-              className="font-display text-3xl md:text-4xl font-bold text-primary hover:text-accent transition-colors cursor-pointer"
+              className="font-display text-3xl md:text-4xl font-bold cursor-pointer transition-colors"
+              style={{ 
+                color: '#F4F6FF',
+                backgroundColor: 'transparent',
+                border: 'none',
+                padding: '0.5rem 1rem'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#4F46E5'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#F4F6FF'}
               type="button"
             >
               Overview
             </button>
             <button 
               onClick={(e) => handleMenuClick(e, section5Ref)}
-              className="font-display text-3xl md:text-4xl font-bold text-primary hover:text-accent transition-colors cursor-pointer"
+              className="font-display text-3xl md:text-4xl font-bold cursor-pointer transition-colors"
+              style={{ 
+                color: '#F4F6FF',
+                backgroundColor: 'transparent',
+                border: 'none',
+                padding: '0.5rem 1rem'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#4F46E5'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#F4F6FF'}
               type="button"
             >
               Capabilities
             </button>
             <button 
               onClick={(e) => handleMenuClick(e, section6Ref)}
-              className="font-display text-3xl md:text-4xl font-bold text-primary hover:text-accent transition-colors cursor-pointer"
+              className="font-display text-3xl md:text-4xl font-bold cursor-pointer transition-colors"
+              style={{ 
+                color: '#F4F6FF',
+                backgroundColor: 'transparent',
+                border: 'none',
+                padding: '0.5rem 1rem'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#4F46E5'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#F4F6FF'}
               type="button"
             >
               Contact
             </button>
           </nav>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Section 1: Hero - Living Identity */}
@@ -736,45 +796,85 @@ function App() {
               </div>
               <div className="flex items-center gap-4">
                 <Phone className="w-5 h-5 text-accent" />
-                <a href="tel:+14155550132" className="text-primary hover:text-accent transition-colors">
-                  +1 (415) 555-0132
+                <a href="tel:+19990000000" className="text-primary hover:text-accent transition-colors">
+                  +1 (999) 000-0000
                 </a>
               </div>
               <div className="flex items-start gap-4">
                 <MapPin className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
                 <span className="text-secondary">
-                  1201 Mission Street<br />
-                  San Francisco, CA 94103
+                  Digital 1st.<br />
+                  NPA — No Physical Address<br />
+                  Global · Remote · Virtual
                 </span>
               </div>
             </div>
             
             {/* Form */}
             <div className="s6-contact-right">
-              <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+              <form 
+                className="space-y-4" 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const name = formData.get('name') as string;
+                  const email = formData.get('email') as string;
+                  
+                  if (!name || !email) {
+                    setFormError('Please fill in at least your name and email.');
+                    return;
+                  }
+                  
+                  // Simulate form submission
+                  setFormError(null);
+                  setFormSubmitted(true);
+                  
+                  // Reset form after 3 seconds
+                  setTimeout(() => {
+                    setFormSubmitted(false);
+                    e.currentTarget.reset();
+                  }, 3000);
+                }}
+              >
                 <input 
                   type="text" 
+                  name="name"
                   placeholder="Name" 
                   className="form-input"
+                  required
                 />
                 <input 
                   type="email" 
+                  name="email"
                   placeholder="Email" 
                   className="form-input"
+                  required
                 />
                 <input 
                   type="text" 
+                  name="company"
                   placeholder="Company" 
                   className="form-input"
                 />
                 <textarea 
+                  name="message"
                   placeholder="Message" 
                   rows={4}
                   className="form-input resize-none"
                 />
-                <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">
+                {formError && (
+                  <p className="text-accent text-sm">{formError}</p>
+                )}
+                {formSubmitted && (
+                  <p className="text-primary text-sm">Thank you! We'll be in touch soon.</p>
+                )}
+                <button 
+                  type="submit" 
+                  className="btn-primary w-full flex items-center justify-center gap-2"
+                  disabled={formSubmitted}
+                >
                   <Send className="w-4 h-4" />
-                  Request early access
+                  {formSubmitted ? 'Submitted!' : 'Request early access'}
                 </button>
               </form>
             </div>
@@ -792,12 +892,24 @@ function App() {
             © 2026 Empresa Original. All rights reserved.
           </p>
           <div className="flex items-center gap-6 mt-4">
-            <a href="#" className="text-secondary text-sm hover:text-primary transition-colors">
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-secondary text-sm hover:text-primary transition-colors cursor-pointer"
+            >
               Privacy
-            </a>
-            <a href="#" className="text-secondary text-sm hover:text-primary transition-colors">
+            </button>
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-secondary text-sm hover:text-primary transition-colors cursor-pointer"
+            >
               Terms
-            </a>
+            </button>
           </div>
         </div>
       </section>

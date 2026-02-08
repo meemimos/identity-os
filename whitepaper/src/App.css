@@ -76,6 +76,10 @@ html {
   }
 }
 
+.menu-overlay {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
 /* Headline text shadow for depth */
 .font-display {
   text-shadow: 0 2px 40px rgba(0, 0, 0, 0.3);
